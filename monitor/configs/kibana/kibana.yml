@@ -1,0 +1,16 @@
+---
+## Default Kibana configuration from kibana-docker.
+#
+server.name: kibana
+server.host: localhost
+server.port: 5601
+
+server.ssl.enabled: "false"
+
+# server.ssl.certificate:
+# server.ssl.key:
+# server.ssl.certificateAuthorities
+# server.ssl.keyPassphrase
+
+elasticsearch.url: http://0.0.0.0:9200
+logging.verbose: true

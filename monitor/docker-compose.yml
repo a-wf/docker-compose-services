@@ -1,0 +1,98 @@
+version: "3.7"
+
+services:
+  node_exporter:
+    image: /prom/node-exporter:v0.15.2
+    container_name: my_node_exporter
+    ports:
+      - "9100:9100"
+    network_mode: host
+    restart: unless-stopped
+
+  prometheus:
+    image: /prom/prometheus:v2.0.0
+    container_name: my_prometheus
+    volumes:
+      - local_run/monitor/configs/prometheus:/etc/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+    network_mode: host
+    restart: unless-stopped
+
+  grafana:
+    image: "/grafana/grafana:5.3.4"
+    container_name: my_grafana
+    user: root
+    volumes:
+      - local_run/monitor/configs/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - local_run/monitor/configs/grafana/data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+  kibana:
+    image: /kibana/kibana:6.1.1
+    container_name: my_kibana
+    stdin_open: true
+    tty: true
+    ports:
+      - 5601:5601
+    # entrypoint: "/bin/bash"
+    # command: "-s"
+    volumes:
+      - local_run/monitor/configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+
+  elasticsearch:
+    image: /elasticsearch/elasticsearch:6.1.2
+    container_name: my_elasticsearch
+    user: elasticsearch
+    stdin_open: true
+    tty: true
+    environment:
+      - "discovery.type=single-node"
+      - "xpack.security.enabled=false"
+    ports:
+      - 9200:9200
+      - 9300:9300
+    # entrypoint: /bin/bash
+    # command: -s
+    volumes:
+      - local_run/monitor/configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      # - local_run/monitor/configs/elasticsearch/data:/usr/share/elasticsearch/data
+    network_mode: host
+    restart: unless-stopped
+  # sudo chown -R 1000:0 elasticsearch
+
+  filebeate:
+    image: /beats/filebeat:6.1.4
+    container_name: my_filebeat
+    # stdin_open: true
+    # tty: true
+    user: ${LOCAL_USER}
+
+    hostname: "1"
+    domainname: ""
+
+    # entrypoint: /bin/bash
+    # command: "-s"
+
+    volumes:
+      - local_run/monitor/configs/filebeat/filebeat.yml:/home/cloud/filebeat/filebeat.yml
+      - /home/works/log:/usr/share/filebeat/logging1
+    network_mode: host
+    restart: unless-stopped
+    depends_on:
+      - elasticsearch
+# LOCAL_USER=$(id -u) docker-compose up --rm -d --remove-orphans
